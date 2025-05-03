@@ -1,0 +1,23 @@
+{
+  "name": "reactcompiler",
+  "version": "1.0.0",
+  "description": "",
+  "main": "App.js",
+  "scripts": {
+    "start": "live-server",
+    "push": "node push.js",
+    "build": "npx babel App.jsx --out-file App.js",
+    "watch": "npx babel App.jsx --out-file App.js --watch",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "@babel/cli": "^7.27.1",
+    "@babel/core": "^7.27.1",
+    "@babel/preset-react": "^7.27.1",
+    "apisauce": "^3.1.1",
+    "live-server": "^1.2.2",
+    "webflow-api": "^3.1.1"
+  }
+}
