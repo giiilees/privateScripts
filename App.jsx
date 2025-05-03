@@ -30,11 +30,13 @@ const App = () => {
     const map = new google.maps.Map(document.getElementById("mapdiv"), {
       zoom: 5.5,
       center: position,
+
       //scrollwheel: false,
       zoomControl: true,
+      mapTypeControl: false,
+
       streetViewControl: false,
       cameraControl: false,
-
       styles: styles,
     });
 

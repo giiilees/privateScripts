@@ -60,6 +60,7 @@ var App = function App() {
       center: position,
       //scrollwheel: false,
       zoomControl: true,
+      mapTypeControl: false,
       streetViewControl: false,
       cameraControl: false,
       styles: styles
