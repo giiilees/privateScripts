@@ -158,7 +158,7 @@ const App = () => {
     <div
       style={{
         width: "100%",
-        minHeight: "80vh",
+        height: "80vh",
         display: "flex",
         flexDirection: "row",
         justifyContent: "flex-start",
@@ -166,27 +166,60 @@ const App = () => {
         position: "relative",
       }}
     >
+      {hoveredDep && (
+        <div
+          style={{
+            position: "absolute",
+            right: 80,
+            top: 80,
+            padding: 15,
+            paddingLeft: 20,
+            paddingRight: 20,
+            color: "#fff",
+            zIndex: 999999,
+            backgroundColor: "green",
+            borderRadius: 10,
+          }}
+        >
+          {hoveredDep}
+        </div>
+      )}
       <div
         style={{
           position: "absolute",
-          right: 80,
-          top: 80,
-          padding: 15,
-          paddingLeft: 20,
-          paddingRight: 20,
-          color: "#fff",
-          zIndex: 999999,
-          backgroundColor: "green",
+          top: 40,
+          left: 40,
+          height: "calc(80vh - 80px)",
+          width: "35%",
+          boxShadow: "0 2px 20px -10px rgba(0,0,0,0.3)",
+          zIndex: 99999999,
+          backgroundColor: "#fff",
+          borderRadius: 20,
+          //padding: 40,
         }}
       >
-        {hoveredDep}
+        <div
+          style={{
+            width: "100%",
+            height: "100%",
+            padding: 40,
+          }}
+        >
+          <span
+            style={{
+              fontSize: 30,
+            }}
+          >
+            Rechercher votre commercial
+          </span>
+        </div>
       </div>
       <div
         id="mapdiv"
         ref={mapRef}
         style={{
           flex: 1,
-          minHeight: "80vh",
+          height: "80vh",
           display: "flex",
           flexDirection: "column",
           justifyContent: "center",

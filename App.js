@@ -185,14 +185,14 @@ var App = function App() {
   return /*#__PURE__*/React.createElement("div", {
     style: {
       width: "100%",
-      minHeight: "80vh",
+      height: "80vh",
       display: "flex",
       flexDirection: "row",
       justifyContent: "flex-start",
       alignItems: "flex-start",
       position: "relative"
     }
-  }, /*#__PURE__*/React.createElement("div", {
+  }, hoveredDep && /*#__PURE__*/React.createElement("div", {
     style: {
       position: "absolute",
       right: 80,
@@ -202,14 +202,38 @@ var App = function App() {
       paddingRight: 20,
       color: "#fff",
       zIndex: 999999,
-      backgroundColor: "green"
+      backgroundColor: "green",
+      borderRadius: 10
     }
   }, hoveredDep), /*#__PURE__*/React.createElement("div", {
+    style: {
+      position: "absolute",
+      top: 40,
+      left: 40,
+      height: "calc(80vh - 80px)",
+      width: "35%",
+      boxShadow: "0 2px 20px -10px rgba(0,0,0,0.3)",
+      zIndex: 99999999,
+      backgroundColor: "#fff",
+      borderRadius: 20
+      //padding: 40,
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      width: "100%",
+      height: "100%",
+      padding: 40
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontSize: 30
+    }
+  }, "Rechercher votre commercial"))), /*#__PURE__*/React.createElement("div", {
     id: "mapdiv",
     ref: mapRef,
     style: {
       flex: 1,
-      minHeight: "80vh",
+      height: "80vh",
       display: "flex",
       flexDirection: "column",
       justifyContent: "center",
