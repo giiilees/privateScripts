@@ -1,25 +1,20 @@
-// App.jsx
-const MyMarkerComponent = ({ label }) => (
-  <div
-    style={{
-      background: "green",
-      color: "white",
-      width: 60,
-      height: 30,
-      padding: "6px 10px",
-      borderRadius: "6px",
-      boxShadow: "0 2px 6px rgba(0,0,0,0.3)",
-      fontSize: "14px",
-      zIndex: 9999999,
-    }}
-  >
-    📍 {label}
-  </div>
-);
-
 const App = () => {
-  const [hoveredDep, setHoveredDep] = React.useState(false);
-  let mapRef = React.useRef(null);
+  // This is a React component that initializes a Google Map and displays it in a div with the ID "mapdiv".
+
+  const [hoveredDep, setHoveredDep] = React.useState(false); // State to store the hovered department name
+  let mapRef = React.useRef(null); // Reference to the map instance
+
+  // Fetching data from an API
+  async function fetchWithErrorHandling(url, options = {}) {
+    const response = await fetch(url, options);
+    if (!response.ok) {
+      const errorBody = await response.text(); // Or response.json() if JSON expected
+      throw new Error(`HTTP ${response.status}: ${errorBody}`);
+    }
+    return response.json(); // Or .text(), etc.
+  }
+
+  // This function initializes the Google Map
   function initMap() {
     const bounds = new window.google.maps.LatLngBounds(
       { lat: 41.303, lng: -5.142 }, // Southwest corner (SW)
@@ -34,7 +29,7 @@ const App = () => {
       //scrollwheel: false,
       zoomControl: true,
       mapTypeControl: false,
-
+      fullscreenControl: false,
       streetViewControl: false,
       cameraControl: false,
       styles: styles,
@@ -51,8 +46,8 @@ const App = () => {
     // );
     // Style the border polygon
     map.data.setStyle({
-      fillColor: "#00990011",
-      fillOpacity: 0.1,
+      fillColor: "#00990022",
+      fillOpacity: 0.5,
       strokeColor: "#00990077",
       strokeWeight: 2,
     });
@@ -84,10 +79,11 @@ const App = () => {
     });
     const mapDiv = document.getElementById("mapdiv");
     const width = mapDiv.offsetWidth;
-    map.fitBounds(bounds, { left: width * 0.4 });
+    const height = mapDiv.offsetHeight;
+    map.fitBounds(bounds);
 
     google.maps.event.addListenerOnce(map, "bounds_changed", function () {
-      map.setZoom(5.9);
+      map.setZoom(6);
     });
 
     mapRef.current = map;
@@ -135,116 +131,186 @@ const App = () => {
     // marker.setMap(map);
   }
 
-  const handlePan = () => {
-    // Example region: California bounding box
-    const bounds = new window.google.maps.LatLngBounds(
-      { lat: 41.303, lng: -5.142 }, // Southwest corner (SW)
-      { lat: 51.124, lng: 9.561 } // Northeast corner (NE)
+  const getData = async () => {
+    const data = await fetchWithErrorHandling(
+      "https://api.webflow.com/v2/collections/68169726cda64534a0375de5/items/live",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization:
+            "Bearer 79d81d912670dcee7e46455b5a3a97460bb38a6b5ff420b2b1fd14249edca996",
+        },
+      }
     );
-    const center = bounds.getCenter();
 
-    mapRef.current.fitBounds(bounds);
-    mapRef.current.panTo(center);
+    console.log("User created:", data);
   };
 
   React.useEffect(() => {
     if (window.google && window?.google?.maps) {
-      console.log("Start");
+      //console.log("Start");
       initMap();
+    } else {
+      setTimeout(() => {
+        initMap();
+      }, 1000);
     }
-  }, [window?.google, window?.google?.maps]);
+  }, []);
+
+  React.useEffect(() => {
+    getData();
+  }, []);
 
   return (
-    <div
-      style={{
-        width: "100%",
-        height: "80vh",
-        display: "flex",
-        flexDirection: "row",
-        justifyContent: "flex-start",
-        alignItems: "flex-start",
-        position: "relative",
-      }}
-    >
-      {hoveredDep && (
-        <div
-          style={{
-            position: "absolute",
-            right: 80,
-            top: 80,
-            padding: 15,
-            paddingLeft: 20,
-            paddingRight: 20,
-            color: "#fff",
-            zIndex: 999999,
-            backgroundColor: "green",
-            borderRadius: 10,
-          }}
-        >
-          {hoveredDep}
-        </div>
-      )}
+    <div style={{ display: "flex", justifyContent: "center" }}>
       <div
         style={{
-          position: "absolute",
-          top: 40,
-          left: 40,
-          height: "calc(80vh - 80px)",
-          width: "35%",
+          maxWidth: "90%",
+          height: "90vh",
+          flexShrink: 0,
+          flexGrow: 1,
+          display: "flex",
+          flexDirection: "row",
+          justifyContent: "flex-start",
+          alignItems: "flex-start",
+          position: "relative",
+          borderRadius: 25,
           boxShadow: "0 2px 20px -10px rgba(0,0,0,0.3)",
-          zIndex: 99999999,
-          backgroundColor: "#fff",
-          borderRadius: 20,
-          //padding: 40,
+          overflow: "hidden",
         }}
       >
-        <div
-          style={{
-            width: "100%",
-            height: "100%",
-            padding: 40,
-          }}
-        >
-          <span
+        {hoveredDep && (
+          <div
             style={{
-              fontSize: 30,
+              position: "absolute",
+              right: 50,
+              top: 50,
+              padding: 15,
+              paddingLeft: 20,
+              paddingRight: 20,
+              color: "#fff",
+              zIndex: 999999,
+              backgroundColor: "green",
+              borderRadius: 10,
             }}
           >
-            Rechercher votre commercial
-          </span>
+            {hoveredDep}
+          </div>
+        )}
+        <div
+          style={{
+            display: "flex",
+            flex: 1,
+            position: "absolute",
+            bottom: 50,
+            backgroundColor: "#C8D1D2",
+            //padding: 40,
+            flexDirection: "column",
+            justifyContent: "flex-end",
+          }}
+        >
+          <div
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              height: false ? "calc(90vh - 100px)" : 240,
+              width: "35vw",
+              boxShadow: "0 2px 20px -10px rgba(0,0,0,0.3)",
+              zIndex: 99999999,
+              border: "1px solid green",
+              backgroundColor: "#fff",
+              borderRadius: 20,
+              marginLeft: 50,
+              marginTop: 50,
+
+              padding: 45,
+              paddingTop: 50,
+            }}
+          >
+            <span
+              style={{
+                fontSize: 22,
+                fontWeight: "bold",
+                maxWidth: "50%",
+                lineHeight: 1.1,
+                color: "green",
+              }}
+            >
+              Rechercher votre commercial
+            </span>
+            <div
+              style={{
+                // width: 590,
+                height: 60,
+                marginTop: 20,
+                backgroundColor: "#fff",
+                border: "1px solid green",
+                zIndex: 99999,
+                borderRadius: 10,
+                backgroundColor: "#00000009",
+                display: "flex",
+
+                alignItems: "center",
+                position: "relative",
+              }}
+            >
+              <input
+                type="text"
+                placeholder="Saisissez votre code postal ou votre département"
+                style={{
+                  fontSize: 15,
+                  fontWeight: "normal",
+                  lineHeight: 1.1,
+                  color: "#333",
+                  paddingLeft: 20,
+                  height: 60,
+                  borderRadius: 10,
+                  flex: 1,
+                  backgroundColor: "transparent",
+                  outline: "none",
+                  borderWidth: 0,
+                }}
+              />
+
+              <img
+                src={
+                  "https://cdn.prod.website-files.com/6814fb6db4d4a1fdce33564d/6816b2c514fa50908c854f0b_icons8-search.svg"
+                }
+                style={{
+                  position: "absolute",
+                  right: 20,
+                }}
+                width={30}
+                height={30}
+              />
+            </div>
+          </div>
         </div>
+        <div
+          className="xl:flex hidden"
+          id="mapdiv"
+          ref={mapRef}
+          style={{
+            flex: 1,
+            height: "90vh",
+
+            flexDirection: "column",
+            justifyContent: "center",
+            alignItems: "center",
+          }}
+        ></div>
       </div>
-      <div
-        id="mapdiv"
-        ref={mapRef}
-        style={{
-          flex: 1,
-          height: "80vh",
-          display: "flex",
-          flexDirection: "column",
-          justifyContent: "center",
-          alignItems: "center",
-        }}
-      ></div>
     </div>
   );
 };
 let styles = [
   {
     featureType: "all",
-    elementType: "geometry",
+    elementType: "labels.text",
     stylers: [
       {
-        color: "#f5f5f5",
-      },
-    ],
-  },
-  {
-    featureType: "all",
-    elementType: "labels.text.fill",
-    stylers: [
-      {
-        color: "#616161",
+        color: "#878787",
       },
     ],
   },
@@ -253,151 +319,37 @@ let styles = [
     elementType: "labels.text.stroke",
     stylers: [
       {
-        color: "#f5f5f5",
-      },
-    ],
-  },
-  {
-    featureType: "all",
-    elementType: "labels.icon",
-    stylers: [
-      {
         visibility: "off",
       },
     ],
   },
   {
-    featureType: "administrative.land_parcel",
-    elementType: "labels.text.fill",
-    stylers: [
-      {
-        color: "#bdbdbd",
-      },
-    ],
-  },
-  {
-    featureType: "poi",
-    elementType: "geometry",
-    stylers: [
-      {
-        color: "#eeeeee",
-      },
-    ],
-  },
-  {
-    featureType: "poi",
-    elementType: "labels.text.fill",
-    stylers: [
-      {
-        color: "#757575",
-      },
-    ],
-  },
-  {
-    featureType: "poi.park",
-    elementType: "geometry",
-    stylers: [
-      {
-        color: "#e5e5e5",
-      },
-    ],
-  },
-  {
-    featureType: "poi.park",
-    elementType: "labels.text.fill",
-    stylers: [
-      {
-        color: "#9e9e9e",
-      },
-    ],
-  },
-  {
-    featureType: "road",
+    featureType: "landscape",
     elementType: "all",
     stylers: [
       {
-        visibility: "on",
-      },
-    ],
-  },
-  {
-    featureType: "road",
-    elementType: "geometry",
-    stylers: [
-      {
-        color: "#ffffff",
+        color: "#f9f9f9",
       },
     ],
   },
   {
     featureType: "road.highway",
-    elementType: "geometry",
+    elementType: "all",
     stylers: [
       {
-        color: "#dadada",
+        visibility: "simplified",
       },
-    ],
-  },
-  {
-    featureType: "road.highway",
-    elementType: "labels.text.fill",
-    stylers: [
       {
-        color: "#616161",
-      },
-    ],
-  },
-  {
-    featureType: "road.arterial",
-    elementType: "labels.text.fill",
-    stylers: [
-      {
-        color: "#757575",
-      },
-    ],
-  },
-  {
-    featureType: "road.local",
-    elementType: "labels.text.fill",
-    stylers: [
-      {
-        color: "#9e9e9e",
-      },
-    ],
-  },
-  {
-    featureType: "transit.line",
-    elementType: "geometry",
-    stylers: [
-      {
-        color: "#e5e5e5",
-      },
-    ],
-  },
-  {
-    featureType: "transit.station",
-    elementType: "geometry",
-    stylers: [
-      {
-        color: "#eeeeee",
+        weight: "0.01",
       },
     ],
   },
   {
     featureType: "water",
-    elementType: "geometry",
+    elementType: "all",
     stylers: [
       {
-        color: "#c9c9c9",
-      },
-    ],
-  },
-  {
-    featureType: "water",
-    elementType: "labels.text.fill",
-    stylers: [
-      {
-        color: "#9e9e9e",
+        color: "#c8d1d2",
       },
     ],
   },
