@@ -29,6 +29,17 @@ export default async function handler(req, res) {
     return res.status(response1.status).json({ error: errText });
   }
 
+  function groupByDepartement(data) {
+    return data.items.reduce((acc, item) => {
+      const deptId = item.fieldData.departement;
+      if (!acc[deptId]) {
+        acc[deptId] = [];
+      }
+      acc[deptId].push(item);
+      return acc;
+    }, {});
+  }
+
   const data = await response.json();
   const data1 = await response1.json();
 
@@ -37,5 +48,6 @@ export default async function handler(req, res) {
   res.status(200).json({
     dep: data,
     com: data1,
+    comByDep: groupByDepartement(data1),
   });
 }
