@@ -1,11 +1,12 @@
 export default async function handler(req, res) {
-  const { collectionId } = req.query;
+  const { dep, com } = req.query;
 
   const WEBFLOW_API_TOKEN = process.env.WEBFLOW_API_TOKEN;
 
-  const url = `https://api.webflow.com/v2/collections/${collectionId}/items/live`;
+  const depUrl = `https://api.webflow.com/v2/collections/${dep}/items/live`;
+  const comUrl = `https://api.webflow.com/v2/collections/${com}/items/live`;
 
-  const response = await fetch(url, {
+  const response = await fetch(depUrl, {
     headers: {
       Authorization: `Bearer ${WEBFLOW_API_TOKEN}`,
       "accept-version": "1.0.0",
@@ -16,10 +17,25 @@ export default async function handler(req, res) {
     const errText = await response.text();
     return res.status(response.status).json({ error: errText });
   }
+  const response1 = await fetch(comUrl, {
+    headers: {
+      Authorization: `Bearer ${WEBFLOW_API_TOKEN}`,
+      "accept-version": "1.0.0",
+    },
+  });
+
+  if (!response1.ok) {
+    const errText = await response1.text();
+    return res.status(response1.status).json({ error: errText });
+  }
 
   const data = await response.json();
+  const data1 = await response1.json();
 
   // CORS header so browser can access it
   res.setHeader("Access-Control-Allow-Origin", "*");
-  res.status(200).json(data);
+  res.status(200).json({
+    data: data,
+    data1: data1,
+  });
 }
