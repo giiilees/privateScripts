@@ -35,7 +35,7 @@ export default async function handler(req, res) {
   // CORS header so browser can access it
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.status(200).json({
-    data: data,
-    data1: data1,
+    dep: data,
+    com: data1,
   });
 }
