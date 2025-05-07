@@ -30,12 +30,45 @@ var App = function App() {
     _React$useState2 = _slicedToArray(_React$useState, 2),
     hoveredDep = _React$useState2[0],
     setHoveredDep = _React$useState2[1]; // State to store the hovered department name
+  var _React$useState3 = React.useState(false),
+    _React$useState4 = _slicedToArray(_React$useState3, 2),
+    depList = _React$useState4[0],
+    setDepList = _React$useState4[1];
+  var _React$useState5 = React.useState(false),
+    _React$useState6 = _slicedToArray(_React$useState5, 2),
+    comList = _React$useState6[0],
+    setComList = _React$useState6[1];
+  var _React$useState7 = React.useState(""),
+    _React$useState8 = _slicedToArray(_React$useState7, 2),
+    keyword = _React$useState8[0],
+    setKeyword = _React$useState8[1];
+  var _React$useState9 = React.useState(false),
+    _React$useState0 = _slicedToArray(_React$useState9, 2),
+    filteredData = _React$useState0[0],
+    setFilteredData = _React$useState0[1];
+  var _React$useState1 = React.useState(false),
+    _React$useState10 = _slicedToArray(_React$useState1, 2),
+    selectedFeature = _React$useState10[0],
+    setSelectedFeature = _React$useState10[1];
+  var _React$useState11 = React.useState(false),
+    _React$useState12 = _slicedToArray(_React$useState11, 2),
+    selectedFromMap = _React$useState12[0],
+    setSelectedFromMap = _React$useState12[1];
+  var _React$useState13 = React.useState(false),
+    _React$useState14 = _slicedToArray(_React$useState13, 2),
+    selectedDep = _React$useState14[0],
+    setSelectedDep = _React$useState14[1];
+  var _React$useState15 = React.useState(290),
+    _React$useState16 = _slicedToArray(_React$useState15, 2),
+    height = _React$useState16[0],
+    setHeight = _React$useState16[1];
   var mapRef = React.useRef(null); // Reference to the map instance
+  var innerRef = React.useRef(null);
 
   // Fetching data from an API
   function fetchWithErrorHandling(_x) {
     return _fetchWithErrorHandling.apply(this, arguments);
-  } // This function initializes the Google Map
+  }
   function _fetchWithErrorHandling() {
     _fetchWithErrorHandling = _asyncToGenerator(/*#__PURE__*/_regeneratorRuntime().mark(function _callee2(url) {
       var options,
@@ -69,21 +102,57 @@ var App = function App() {
     }));
     return _fetchWithErrorHandling.apply(this, arguments);
   }
+  var normalize = function normalize(str) {
+    return str.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+  };
+  function getFeatureCenter(geometry) {
+    // let map = mapRef.current;
+
+    var bounds = new google.maps.LatLngBounds();
+    function processGeometry(geom) {
+      if (geom.getType() === "Polygon" || geom.getType() === "LinearRing") {
+        geom.getArray().forEach(function (path) {
+          path.getArray().forEach(function (latlng) {
+            bounds.extend(latlng);
+          });
+        });
+      } else if (geom.getType() === "MultiPolygon") {
+        geom.getArray().forEach(function (polygon) {
+          processGeometry(polygon);
+        });
+      } else if (geom.getType() === "GeometryCollection") {
+        geom.getArray().forEach(function (g) {
+          processGeometry(g);
+        });
+      }
+    }
+    processGeometry(geometry);
+    return bounds.getCenter();
+  }
+  function panWithOffset(map, latLng, offsetX, offsetY) {
+    var scale = Math.pow(2, map.getZoom());
+    var worldCoordinateCenter = map.getProjection().fromLatLngToPoint(latLng);
+    var pixelOffset = new google.maps.Point(offsetX / scale, offsetY / scale);
+    var worldCoordinateNewCenter = new google.maps.Point(worldCoordinateCenter.x - pixelOffset.x, worldCoordinateCenter.y + pixelOffset.y);
+    var newCenter = map.getProjection().fromPointToLatLng(worldCoordinateNewCenter);
+    map.panTo(newCenter);
+  }
+  // This function initializes the Google Map
   function initMap() {
     var bounds = new window.google.maps.LatLngBounds({
       lat: 41.303,
-      lng: -5.142
+      lng: -13.142
     },
     // Southwest corner (SW)
     {
       lat: 51.124,
-      lng: 9.561
+      lng: 5.561
     } // Northeast corner (NE)
     );
     var position = bounds.getCenter();
     var map = new google.maps.Map(document.getElementById("mapdiv"), {
-      zoom: 5.5,
       center: position,
+      zoom: 5,
       //scrollwheel: false,
       zoomControl: true,
       mapTypeControl: false,
@@ -92,7 +161,13 @@ var App = function App() {
       cameraControl: false,
       styles: styles
     });
-    map.data.loadGeoJson("https://france-geojson.gregoiredavid.fr/repo/departements.geojson");
+    map.data.loadGeoJson("https://france-geojson.gregoiredavid.fr/repo/departements.geojson", null, function (features) {
+      // Add a custom property to store the department code
+      features.forEach(function (feature) {
+        feature.setProperty("code", feature.getProperty("code"));
+      });
+    });
+
     // map.data.loadGeoJson(
     //   "https://france-geojson.gregoiredavid.fr/repo/regions.geojson"
     // );
@@ -107,30 +182,7 @@ var App = function App() {
       strokeWeight: 2
     });
 
-    // Store the hovered feature for reference
-    var hoveredFeature = null;
-
-    // Hover effect
-    map.data.addListener("mouseover", function (event) {
-      hoveredFeature = event.feature;
-      var name = event.feature.getProperty("nom");
-      setHoveredDep(name);
-      map.data.overrideStyle(event.feature, {
-        fillColor: "green",
-        fillOpacity: 0.5,
-        strokeWeight: 3
-      });
-    });
-    map.data.addListener("mouseout", function (event) {
-      map.data.revertStyle(event.feature);
-      hoveredFeature = null;
-    });
-
-    // Clickable - show info or do something
-    map.data.addListener("click", function (event) {
-      var name = event.feature.getProperty("code");
-      alert("Département: " + name);
-    });
+    // Add a click event listener to the map
     var mapDiv = document.getElementById("mapdiv");
     var width = mapDiv.offsetWidth;
     var height = mapDiv.offsetHeight;
@@ -185,24 +237,76 @@ var App = function App() {
     }(google.maps.OverlayView); // const marker = new CustomMarker(position, "Paris");
     // marker.setMap(map);
   }
+  function zoomToDepartement(code, map, name) {
+    var foundFeature = null;
+    // console.log(code);
+
+    if (name) {
+      setHoveredDep(name);
+    }
+    map.data.forEach(function (feature) {
+      // console.log(feature.getProperty("code"));
+      if (feature.getProperty("code") === code) {
+        foundFeature = feature;
+      }
+    });
+    if (foundFeature) {
+      // Get the geometry of the département and compute the center
+      var geometry = foundFeature.getGeometry();
+      var center = getFeatureCenter(geometry);
+      if (selectedFeature) {
+        map.data.revertStyle(selectedFeature);
+      }
+      map.data.overrideStyle(foundFeature, {
+        fillColor: "green",
+        fillOpacity: 0.9,
+        strokeColor: "green",
+        strokeWeight: 3
+      });
+      setSelectedFeature(foundFeature);
+
+      // Zoom to the center of the département
+      // map.setZoom(7);
+      panWithOffset(map, center, 50, 0);
+      map.setZoom(9); // Adjust the zoom level as needed
+    } else {
+      console.log("Département with code " + code + " not found.");
+    }
+  }
+  var handleInputChange = function handleInputChange(event) {
+    var input = event.target.value;
+    setKeyword(input);
+    if (!input) {
+      setHeight(290);
+      setFilteredData(false);
+      return;
+    }
+
+    // console.log(depList.items);
+    // Filter the array by the normalized input
+    var filtered = depList.items.filter(function (item) {
+      return normalize(item.fieldData.name).includes(normalize(input));
+    }).slice(0, 5); // Limit to 5 results
+    //console.log(filtered);
+    setFilteredData(filtered);
+  };
   var getData = /*#__PURE__*/function () {
     var _ref = _asyncToGenerator(/*#__PURE__*/_regeneratorRuntime().mark(function _callee() {
-      var data;
+      var dev, data;
       return _regeneratorRuntime().wrap(function _callee$(_context) {
         while (1) switch (_context.prev = _context.next) {
           case 0:
-            _context.next = 2;
-            return fetchWithErrorHandling("https://api.webflow.com/v2/collections/68169726cda64534a0375de5/items/live", {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-                Authorization: "Bearer 79d81d912670dcee7e46455b5a3a97460bb38a6b5ff420b2b1fd14249edca996"
-              }
-            });
-          case 2:
+            dev = false;
+            _context.next = 3;
+            return fetchWithErrorHandling("".concat(dev ? "http://localhost:3000" : "https://private-scripts.vercel.app", "/api/webflow?dep=68169726cda64534a0375de5&com=681698f19dfd03f712563c2e"));
+          case 3:
             data = _context.sent;
-            console.log("User created:", data);
-          case 4:
+            setDepList(data.dep);
+            setComList({
+              data: data.com,
+              dataByDep: data.comByDep
+            });
+          case 6:
           case "end":
             return _context.stop();
         }
@@ -226,15 +330,77 @@ var App = function App() {
   React.useEffect(function () {
     getData();
   }, []);
+  React.useEffect(function () {
+    if (selectedDep) {
+      var _comList$dataByDep$se, _comList$dataByDep$se2;
+      var _newHeight = comList !== null && comList !== void 0 && (_comList$dataByDep$se = comList.dataByDep[selectedDep === null || selectedDep === void 0 ? void 0 : selectedDep.id]) !== null && _comList$dataByDep$se !== void 0 && _comList$dataByDep$se.length ? (comList === null || comList === void 0 || (_comList$dataByDep$se2 = comList.dataByDep[selectedDep === null || selectedDep === void 0 ? void 0 : selectedDep.id]) === null || _comList$dataByDep$se2 === void 0 ? void 0 : _comList$dataByDep$se2.length) * 80 + 250 : 290;
+      //console.log(newHeight);
+      setHeight(_newHeight);
+      return;
+    }
+    var newHeight = filteredData.length * 65 + 230;
+    setHeight(newHeight);
+  }, [filteredData, selectedDep]);
+  React.useEffect(function () {
+    if (!(mapRef !== null && mapRef !== void 0 && mapRef.current)) return;
+    // Store the hovered feature for reference
+    var hoveredFeature = null;
+
+    // Hover effect
+    var event = mapRef.current.data.addListener("mouseover", function (event) {
+      hoveredFeature = event.feature;
+      var name = event.feature.getProperty("nom");
+      setHoveredDep(name);
+      var code = event.feature.getProperty("code");
+      if (selectedDep && (selectedDep === null || selectedDep === void 0 ? void 0 : selectedDep.fieldData["code-2"]) === code) return;
+      mapRef.current.data.overrideStyle(event.feature, {
+        fillColor: "green",
+        fillOpacity: 0.5,
+        strokeWeight: 3
+      });
+    });
+    var event1 = mapRef.current.data.addListener("mouseout", function (event) {
+      var code = event.feature.getProperty("code");
+      if (selectedDep && (selectedDep === null || selectedDep === void 0 ? void 0 : selectedDep.fieldData["code-2"]) === code) return;
+      mapRef.current.data.revertStyle(event.feature);
+      hoveredFeature = null;
+    });
+
+    // Clickable - show info or do something
+    var event2 = mapRef.current.data.addListener("click", function (event) {
+      var _depList$items;
+      var code = event.feature.getProperty("code");
+      //console.log(code);
+      //console.log(event.feature.getProperty("code"));
+      setSelectedFeature(event.feature);
+      zoomToDepartement(code, mapRef.current, event.feature.getProperty("name"));
+      if (!depList) return;
+      //console.log("list");
+      var result = depList === null || depList === void 0 || (_depList$items = depList.items) === null || _depList$items === void 0 ? void 0 : _depList$items.find(function (item) {
+        return item.fieldData["code-2"] == code;
+      });
+      if (!result) return;
+      //console.log(result);
+      setSelectedDep(result);
+    });
+    // console.log(event);
+
+    return function () {
+      // Clean up event listeners
+
+      google.maps.event.removeListener(event);
+      google.maps.event.removeListener(event1);
+      google.maps.event.removeListener(event2);
+    };
+  }, [mapRef, depList, selectedDep]);
   return /*#__PURE__*/React.createElement("div", {
     style: {
       display: "flex",
       justifyContent: "center"
     }
   }, /*#__PURE__*/React.createElement("div", {
+    className: "xl:max-w-[100%] w-[100%] xl:min-h-[90vh]",
     style: {
-      maxWidth: "90%",
-      height: "90vh",
       flexShrink: 0,
       flexGrow: 1,
       display: "flex",
@@ -242,11 +408,10 @@ var App = function App() {
       justifyContent: "flex-start",
       alignItems: "flex-start",
       position: "relative",
-      borderRadius: 25,
-      boxShadow: "0 2px 20px -10px rgba(0,0,0,0.3)",
-      overflow: "hidden"
+      boxShadow: "0 2px 20px -10px rgba(0,0,0,0.3)"
     }
   }, hoveredDep && /*#__PURE__*/React.createElement("div", {
+    className: "xl:flex hidden",
     style: {
       position: "absolute",
       right: 50,
@@ -257,36 +422,40 @@ var App = function App() {
       color: "#fff",
       zIndex: 999999,
       backgroundColor: "green",
-      borderRadius: 10
+      borderRadius: 0
     }
   }, hoveredDep), /*#__PURE__*/React.createElement("div", {
+    className: "xl:absolute relative xl:bottom-[50px] bottom-[0px]",
     style: {
       display: "flex",
       flex: 1,
-      position: "absolute",
-      bottom: 50,
       backgroundColor: "#C8D1D2",
       //padding: 40,
       flexDirection: "column",
       justifyContent: "flex-end"
     }
   }, /*#__PURE__*/React.createElement("div", {
+    className: "xl:w-[35vw] w-[100%] xl:ml-[50px] ml-[0px]  xl:mt-[50px] mt-[0px] xl:rounded-[15px] rounded-[0px] ",
     style: {
+      overflow: "hidden",
+      transition: "height 0.3s ease",
       display: "flex",
       flexDirection: "column",
-      height: false ? "calc(90vh - 100px)" : 240,
-      width: "35vw",
+      height: height === "auto" ? "auto" : "".concat(height, "px"),
+      maxHeight: "calc(90vh - 100px)",
+      minHeight: 230,
       boxShadow: "0 2px 20px -10px rgba(0,0,0,0.3)",
       zIndex: 99999999,
       border: "1px solid green",
       backgroundColor: "#fff",
-      borderRadius: 20,
-      marginLeft: 50,
-      marginTop: 50,
       padding: 45,
       paddingTop: 50
     }
-  }, /*#__PURE__*/React.createElement("span", {
+    // onTransitionEnd={() => {
+    //   // After transition ends, set to "auto" so it can grow freely
+    //   setHeight("auto");
+    // }}
+  }, !selectedDep && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("span", {
     style: {
       fontSize: 22,
       fontWeight: "bold",
@@ -294,7 +463,7 @@ var App = function App() {
       lineHeight: 1.1,
       color: "green"
     }
-  }, "Rechercher votre commercial"), /*#__PURE__*/React.createElement("div", {
+  }, "Recherchez votre commercial"), /*#__PURE__*/React.createElement("div", {
     style: _defineProperty(_defineProperty(_defineProperty(_defineProperty({
       // width: 590,
       height: 60,
@@ -305,7 +474,10 @@ var App = function App() {
       borderRadius: 10
     }, "backgroundColor", "#00000009"), "display", "flex"), "alignItems", "center"), "position", "relative")
   }, /*#__PURE__*/React.createElement("input", {
+    disabled: depList && comList ? false : true,
     type: "text",
+    value: keyword,
+    onChange: handleInputChange,
     placeholder: "Saisissez votre code postal ou votre d\xE9partement",
     style: {
       fontSize: 15,
@@ -320,26 +492,153 @@ var App = function App() {
       outline: "none",
       borderWidth: 0
     }
-  }), /*#__PURE__*/React.createElement("img", {
+  }), !depList && !comList && /*#__PURE__*/React.createElement(Spinner, null), depList && comList && /*#__PURE__*/React.createElement("img", {
     src: "https://cdn.prod.website-files.com/6814fb6db4d4a1fdce33564d/6816b2c514fa50908c854f0b_icons8-search.svg",
     style: {
       position: "absolute",
       right: 20
     },
-    width: 30,
-    height: 30
-  })))), /*#__PURE__*/React.createElement("div", {
+    width: 25,
+    height: 25
+  })), !filteredData && /*#__PURE__*/React.createElement("div", {
+    style: {
+      height: 60,
+      flexGrow: 1,
+      flexShrink: 0,
+      backgroundColor: "red",
+      marginTop: 20
+    }
+  }), filteredData && filteredData[0] && /*#__PURE__*/React.createElement("div", {
+    ref: innerRef,
+    style: {
+      display: "flex",
+      flexDirection: "column",
+      paddingTop: 15
+      //backgroundColor: "red",
+    }
+  }, filteredData[0] && filteredData.map(function (item, index) {
+    return /*#__PURE__*/React.createElement("div", {
+      key: index,
+      className: "hover:bg-gray-100 bg-transparent",
+      onClick: function onClick() {
+        zoomToDepartement(item.fieldData["code-2"], mapRef.current, item.fieldData["name"]);
+        //console.log(item);
+        setSelectedDep(item);
+        //setKeyword("");
+        //setFilteredData(false);
+        //console.log(item.fieldData.code);
+      },
+      style: {
+        display: "flex",
+        cursor: "pointer",
+        minHeight: 60,
+        //backgroundColor: "#f5f5f5",
+        // marginBottom: 5,
+        //borderRadius: 10,
+        borderBottomWidth: index + 1 == filteredData.length ? 0 : 1,
+        borderColor: "#555",
+        alignItems: "center",
+        paddingLeft: 20
+      }
+    }, /*#__PURE__*/React.createElement("span", {
+      style: {
+        fontSize: 18,
+        fontWeight: "normal",
+        lineHeight: 1.1,
+        color: "#000"
+      }
+    }, item.fieldData.name));
+  }))), selectedDep && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
+    onClick: function onClick() {
+      setSelectedDep(false);
+    },
+    style: {
+      fontSize: 19,
+      color: "blue",
+      textDecoration: "underline",
+      marginBottom: 5,
+      cursor: "pointer"
+    }
+  }, "Retour"), /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontSize: 35,
+      fontWeight: "bold",
+      maxWidth: "50%",
+      lineHeight: 1.1,
+      color: "green"
+    }
+  }, selectedDep.fieldData.name), /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontSize: 19,
+      fontWeight: "normal",
+      maxWidth: "50%",
+      lineHeight: 1.1,
+      color: "#555",
+      marginTop: 10,
+      marginBottom: 25
+    }
+  }, "Liste des commerciaux dans le departement"), comList && comList.dataByDep && (comList === null || comList === void 0 ? void 0 : comList.dataByDep[selectedDep.id]) && (comList === null || comList === void 0 ? void 0 : comList.dataByDep[selectedDep.id].map(function (item, index) {
+    return /*#__PURE__*/React.createElement("div", {
+      key: index,
+      className: "hover:bg-gray-100 bg-[#f5f5f5",
+      onClick: function onClick() {
+        // zoomToDepartement(
+        //   item.fieldData[`code-2`],
+        //   mapRef.current,
+        //   item.fieldData[`name`]
+        // );
+        // //console.log(item);
+        // setSelectedDep(item);
+        //setKeyword("");
+        //setFilteredData(false);
+        //console.log(item.fieldData.code);
+      },
+      style: {
+        display: "flex",
+        cursor: "pointer",
+        minHeight: 80,
+        //backgroundColor: "#f5f5f5",
+        marginBottom: 10,
+        borderRadius: 10,
+        border: "1px solid green",
+        alignItems: "center",
+        paddingLeft: 20
+      }
+    }, /*#__PURE__*/React.createElement("span", {
+      style: {
+        fontSize: 18,
+        fontWeight: "normal",
+        lineHeight: 1.1,
+        color: "#000"
+      }
+    }, item.fieldData.name));
+  }))))), /*#__PURE__*/React.createElement("div", {
     className: "xl:flex hidden",
     id: "mapdiv",
-    ref: mapRef,
     style: {
       flex: 1,
       height: "90vh",
       flexDirection: "column",
       justifyContent: "center",
-      alignItems: "center"
+      alignItems: "center",
+      // border: "1px solid green",
+      borderRadius: 0
     }
   })));
+};
+var Spinner = function Spinner() {
+  return /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      width: 25,
+      position: "absolute",
+      right: 20,
+      height: 25,
+      flexGrow: 1,
+      flexShrink: 0
+    },
+    className: "spinner"
+  });
 };
 var styles = [{
   featureType: "all",
