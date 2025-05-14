@@ -6,7 +6,7 @@
   "scripts": {
     "start": "live-server",
     "push": "node push.js",
-    "build": "npx babel App.jsx --out-file App.js",
+    "build": "npx babel App2.jsx --out-file App2.js",
     "watch": "npx babel App.jsx --out-file App.js --watch",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
