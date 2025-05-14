@@ -960,6 +960,10 @@ var FullModal = function FullModal() {
     _React$useState38 = _slicedToArray(_React$useState37, 2),
     succeded = _React$useState38[0],
     setSucceded = _React$useState38[1];
+  var _React$useState39 = React.useState(false),
+    _React$useState40 = _slicedToArray(_React$useState39, 2),
+    loading = _React$useState40[0],
+    setLoading = _React$useState40[1];
   var total = selectedItems.reduce(function (acc, item) {
     var _item$fieldData;
     return acc + (((_item$fieldData = item.fieldData) === null || _item$fieldData === void 0 ? void 0 : _item$fieldData.price) || 0);
@@ -1031,7 +1035,7 @@ var FullModal = function FullModal() {
       return _regeneratorRuntime().wrap(function _callee4$(_context4) {
         while (1) switch (_context4.prev = _context4.next) {
           case 0:
-            console.log("starting");
+            setLoading(true);
             dev = true;
             _context4.next = 4;
             return fetch("".concat(dev ? "http://localhost:3000" : "https://private-scripts.vercel.app", "/api/steps"), {
@@ -1050,7 +1054,7 @@ var FullModal = function FullModal() {
           case 4:
             data = _context4.sent;
             if (data.ok) {
-              _context4.next = 11;
+              _context4.next = 12;
               break;
             }
             _context4.next = 8;
@@ -1059,10 +1063,12 @@ var FullModal = function FullModal() {
             errorBody = _context4.sent;
             // Or response.json() if JSON expected
             console.log(errorBody);
+            setLoading(false);
             return _context4.abrupt("return");
-          case 11:
-            setSucceded(true);
           case 12:
+            setSucceded(true);
+            setLoading(false);
+          case 14:
           case "end":
             return _context4.stop();
         }
@@ -1312,6 +1318,7 @@ var FullModal = function FullModal() {
     }
   }, /*#__PURE__*/React.createElement("div", {
     onClick: function onClick() {
+      if (loading) return;
       if (succeded) {
         setIsShown(false);
         setPage(1);
@@ -1340,7 +1347,9 @@ var FullModal = function FullModal() {
       alignItems: "center",
       marginTop: 20
     }
-  }, /*#__PURE__*/React.createElement("span", {
+  }, loading && /*#__PURE__*/React.createElement(Spinner, {
+    noAbsolute: true
+  }), !loading && /*#__PURE__*/React.createElement("span", {
     style: {
       fontSize: 17,
       fontWeight: "bold",
@@ -1366,14 +1375,17 @@ var ProgressBar = function ProgressBar(_ref5) {
   }, Math.round(percentage), "%"));
 };
 var Spinner = function Spinner(_ref6) {
-  var large = _ref6.large;
+  var large = _ref6.large,
+    noAbsolute = _ref6.noAbsolute;
   return /*#__PURE__*/React.createElement("div", {
     style: _defineProperty(_defineProperty(_defineProperty({
       display: "flex",
       width: large ? 45 : 25,
+      maxWidth: large ? 45 : 25,
       height: large ? 45 : 25,
-      position: large ? "relative" : "absolute"
-    }, large ? null : "right", 20), "flexGrow", large ? 0 : 1), "flexShrink", 0),
+      maxHeight: large ? 45 : 25,
+      position: noAbsolute ? "static" : large ? "relative" : "absolute"
+    }, noAbsolute ? null : large ? null : "right", 20), "flexGrow", large ? 0 : 1), "flexShrink", 0),
     className: "spinner"
   });
 };

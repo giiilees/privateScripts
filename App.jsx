@@ -970,6 +970,7 @@ const FullModal = () => {
   const [name, setName] = React.useState("");
   const [desc, setDesc] = React.useState("");
   const [succeded, setSucceded] = React.useState(false);
+  const [loading, setLoading] = React.useState(false);
 
   let total = selectedItems.reduce((acc, item) => {
     return acc + (item.fieldData?.price || 0);
@@ -997,7 +998,7 @@ const FullModal = () => {
   };
 
   const submitData = async () => {
-    console.log("starting");
+    setLoading(true);
     let dev = true;
     const data = await fetch(
       `${
@@ -1018,9 +1019,11 @@ const FullModal = () => {
     if (!data.ok) {
       const errorBody = await response.text(); // Or response.json() if JSON expected
       console.log(errorBody);
+      setLoading(false);
       return;
     }
     setSucceded(true);
+    setLoading(false);
   };
 
   React.useEffect(() => {
@@ -1333,6 +1336,7 @@ const FullModal = () => {
             >
               <div
                 onClick={() => {
+                  if (loading) return;
                   if (succeded) {
                     setIsShown(false);
                     setPage(1);
@@ -1364,21 +1368,24 @@ const FullModal = () => {
                   marginTop: 20,
                 }}
               >
-                <span
-                  style={{
-                    fontSize: 17,
-                    fontWeight: "bold",
+                {loading && <Spinner noAbsolute />}
+                {!loading && (
+                  <span
+                    style={{
+                      fontSize: 17,
+                      fontWeight: "bold",
 
-                    lineHeight: 1.1,
-                    color: "green",
-                  }}
-                >
-                  {succeded
-                    ? "Fermer"
-                    : percentage == 100
-                    ? "Envoyer"
-                    : "Suivant"}
-                </span>
+                      lineHeight: 1.1,
+                      color: "green",
+                    }}
+                  >
+                    {succeded
+                      ? "Fermer"
+                      : percentage == 100
+                      ? "Envoyer"
+                      : "Suivant"}
+                  </span>
+                )}
               </div>
             </div>
           </div>
@@ -1404,15 +1411,18 @@ const ProgressBar = ({ value, max = 100 }) => {
   );
 };
 
-const Spinner = ({ large }) => {
+const Spinner = ({ large, noAbsolute }) => {
   return (
     <div
       style={{
         display: "flex",
         width: large ? 45 : 25,
+        maxWidth: large ? 45 : 25,
         height: large ? 45 : 25,
-        position: large ? "relative" : "absolute",
-        [large ? null : "right"]: 20,
+        maxHeight: large ? 45 : 25,
+
+        position: noAbsolute ? "static" : large ? "relative" : "absolute",
+        [noAbsolute ? null : large ? null : "right"]: 20,
 
         flexGrow: large ? 0 : 1,
         flexShrink: 0,
