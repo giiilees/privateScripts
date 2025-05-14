@@ -969,6 +969,7 @@ const FullModal = () => {
   const [selectedItems, setSelectedItems] = React.useState([]);
   const [name, setName] = React.useState("");
   const [desc, setDesc] = React.useState("");
+  const [succeded, setSucceded] = React.useState(false);
 
   let total = selectedItems.reduce((acc, item) => {
     return acc + (item.fieldData?.price || 0);
@@ -984,7 +985,7 @@ const FullModal = () => {
     return response.json(); // Or .text(), etc.
   }
   const getData = async () => {
-    let dev = true;
+    let dev = false;
     const data = await fetchWithErrorHandling(
       `${
         dev ? "http://localhost:3000" : "https://private-scripts.vercel.app"
@@ -1004,24 +1005,22 @@ const FullModal = () => {
       }/api/steps`,
       {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: {
+        body: JSON.stringify({
           fieldData: {
             name: name,
             description: desc,
             total,
             "products-2": selectedItems.map((item) => item.id),
           },
-        },
+        }),
       }
     );
     if (!data.ok) {
       const errorBody = await response.text(); // Or response.json() if JSON expected
       console.log(errorBody);
+      return;
     }
-    console.log("data", data);
+    setSucceded(true);
   };
 
   React.useEffect(() => {
@@ -1060,6 +1059,11 @@ const FullModal = () => {
           >
             <div
               onClick={() => {
+                if (succeded) {
+                  setIsShown(false);
+                  setPage(1);
+                  return;
+                }
                 if (page > 1) {
                   setPage((prev) => {
                     return prev - 1;
@@ -1077,207 +1081,248 @@ const FullModal = () => {
                 cursor: "pointer",
               }}
             >{`Retour`}</div>
-            <span
-              style={{
-                fontSize: 35,
-                fontWeight: "bold",
-                maxWidth: "50%",
-                lineHeight: 1.1,
-                color: "green",
-              }}
-            >
-              {"Votre besoin"}
-            </span>
-            <ProgressBar value={percentage} />
-            {page == 1 && (
+            {succeded && (
               <div
-                className="gap-x-2 "
                 style={{
                   display: "flex",
-                  maxWidth: "100%",
                   justifyContent: "center",
                   alignItems: "center",
-                  paddingTop: 20,
-                }}
-              >
-                {!data && (
-                  <div
-                    style={{
-                      display: "flex",
-                      justifyContent: "center",
-                      alignItems: "center",
-                      flexDirection: "column",
-                      minHeight: 220,
-                    }}
-                  >
-                    <Spinner large />
-                  </div>
-                )}
-                {data &&
-                  data.items?.length &&
-                  data.items.map((item, index) => (
-                    <div
-                      key={index}
-                      style={{
-                        borderWidth: 0,
-                        borderColor: "green",
-                        borderRadius: 20,
-                        overflow: "hidden",
-                        position: "relative",
-                        display: "flex",
-                        alignItems: "flex-end",
-                        justifyContent: "center",
-                        cursor: "pointer",
-                      }}
-                    >
-                      <img
-                        onClick={() => {
-                          setSelectedItems((prev) => {
-                            if (prev.includes(item)) {
-                              return prev.filter((i) => i != item);
-                            }
-                            return [...prev, item];
-                          });
-                        }}
-                        src={item?.fieldData?.image?.url}
-                        width={"100%"}
-                        style={{
-                          objectFit: "cover",
-                          flex: 1,
-
-                          backgroundColor: "#f5f5f5",
-                        }}
-                      />
-                      {selectedItems.includes(item) && (
-                        <div
-                          style={{
-                            position: "absolute",
-                            left: 0,
-                            width: "100%",
-                            display: "flex",
-                            justifyContent: "center",
-                            alignItems: "center",
-                            height: 40,
-                            backgroundColor: "green",
-                          }}
-                        >
-                          <span
-                            style={{
-                              fontSize: 15,
-                              fontWeight: "normal",
-
-                              lineHeight: 1.1,
-                              color: "#fff",
-                            }}
-                          >
-                            {"Sélectionné"}
-                          </span>
-                        </div>
-                      )}
-                    </div>
-                  ))}
-              </div>
-            )}
-            {page == 2 && (
-              <div
-                style={{
-                  display: "flex",
                   flexDirection: "column",
-                  justifyContent: "center",
-                  alignItems: "flex-start",
-                  marginTop: 20,
-                }}
-              >
-                <span
-                  style={{
-                    fontSize: 19,
-                    fontWeight: "bold",
-
-                    lineHeight: 1.1,
-                    color: "#444",
-                  }}
-                >
-                  Nom Complet *
-                </span>
-                <input
-                  type="text"
-                  placeholder="Nom Complet"
-                  value={name}
-                  onChange={(e) => {
-                    e.preventDefault();
-                    setName(e.target.value);
-                  }}
-                  style={{
-                    minHeight: 60,
-                    padding: 20,
-                    width: "100%",
-                    backgroundColor: "#eee",
-                    borderRadius: 10,
-                    marginTop: 15,
-                    marginBottom: 20,
-                  }}
-                />
-                <span
-                  style={{
-                    fontSize: 19,
-                    fontWeight: "bold",
-
-                    lineHeight: 1.1,
-                    color: "#444",
-                  }}
-                >
-                  Description de votre besoin
-                </span>
-                <textarea
-                  placeholder="Décrivez votre besoin ici"
-                  value={desc}
-                  onChange={(e) => {
-                    e.preventDefault();
-                    setDesc(e.target.value);
-                  }}
-                  style={{
-                    minHeight: 300,
-                    padding: 20,
-                    width: "100%",
-                    backgroundColor: "#eee",
-                    borderRadius: 10,
-                    marginTop: 15,
-                  }}
-                />
-              </div>
-            )}
-            {page == 3 && (
-              <div
-                style={{
-                  display: "flex",
-                  flexDirection: "column",
-                  justifyContent: "center",
-                  alignItems: "center",
-                  marginTop: 20,
                   minHeight: 250,
                 }}
               >
-                {" "}
-                <div
+                <img
+                  src={
+                    "https://cdn.prod.website-files.com/6814fb6db4d4a1fdce33564d/68245b3f9458e9f9ae392faf_check-square-svgrepo-com%20(1).png"
+                  }
                   style={{
-                    fontSize: 16,
-                    color: "blue",
+                    objectFit: "contain",
 
-                    marginBottom: 5,
+                    //backgroundColor: "#f5f5f5",
+                    width: 120,
+                    height: 120,
                   }}
-                >{`Total`}</div>
+                />
                 <span
                   style={{
-                    fontSize: 45,
+                    fontSize: 35,
                     fontWeight: "bold",
-
+                    // maxWidth: "50%",
+                    lineHeight: 1.1,
+                    color: "green",
+                    marginTop: 10,
+                  }}
+                >
+                  {"Commande envoyée"}
+                </span>
+              </div>
+            )}
+            {!succeded && (
+              <>
+                <span
+                  style={{
+                    fontSize: 35,
+                    fontWeight: "bold",
+                    maxWidth: "50%",
                     lineHeight: 1.1,
                     color: "green",
                   }}
                 >
-                  {`${total}€`}
+                  {"Votre besoin"}
                 </span>
-              </div>
+                <ProgressBar value={percentage} />
+
+                {page == 1 && (
+                  <div
+                    className="gap-x-2 "
+                    style={{
+                      display: "flex",
+                      maxWidth: "100%",
+                      justifyContent: "center",
+                      alignItems: "center",
+                      paddingTop: 20,
+                    }}
+                  >
+                    {!data && (
+                      <div
+                        style={{
+                          display: "flex",
+                          justifyContent: "center",
+                          alignItems: "center",
+                          flexDirection: "column",
+                          minHeight: 220,
+                        }}
+                      >
+                        <Spinner large />
+                      </div>
+                    )}
+                    {data &&
+                      data.items?.length &&
+                      data.items.map((item, index) => (
+                        <div
+                          key={index}
+                          style={{
+                            borderWidth: 0,
+                            borderColor: "green",
+                            borderRadius: 20,
+                            overflow: "hidden",
+                            position: "relative",
+                            display: "flex",
+                            alignItems: "flex-end",
+                            justifyContent: "center",
+                            cursor: "pointer",
+                          }}
+                        >
+                          <img
+                            onClick={() => {
+                              setSelectedItems((prev) => {
+                                if (prev.includes(item)) {
+                                  return prev.filter((i) => i != item);
+                                }
+                                return [...prev, item];
+                              });
+                            }}
+                            src={item?.fieldData?.image?.url}
+                            width={"100%"}
+                            style={{
+                              objectFit: "cover",
+                              flex: 1,
+
+                              backgroundColor: "#f5f5f5",
+                            }}
+                          />
+                          {selectedItems.includes(item) && (
+                            <div
+                              style={{
+                                position: "absolute",
+                                left: 0,
+                                width: "100%",
+                                display: "flex",
+                                justifyContent: "center",
+                                alignItems: "center",
+                                height: 40,
+                                backgroundColor: "green",
+                              }}
+                            >
+                              <span
+                                style={{
+                                  fontSize: 15,
+                                  fontWeight: "normal",
+
+                                  lineHeight: 1.1,
+                                  color: "#fff",
+                                }}
+                              >
+                                {"Sélectionné"}
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                  </div>
+                )}
+                {page == 2 && (
+                  <div
+                    style={{
+                      display: "flex",
+                      flexDirection: "column",
+                      justifyContent: "center",
+                      alignItems: "flex-start",
+                      marginTop: 20,
+                    }}
+                  >
+                    <span
+                      style={{
+                        fontSize: 19,
+                        fontWeight: "bold",
+
+                        lineHeight: 1.1,
+                        color: "#444",
+                      }}
+                    >
+                      Nom Complet *
+                    </span>
+                    <input
+                      type="text"
+                      placeholder="Nom Complet"
+                      value={name}
+                      onChange={(e) => {
+                        e.preventDefault();
+                        setName(e.target.value);
+                      }}
+                      style={{
+                        minHeight: 60,
+                        padding: 20,
+                        width: "100%",
+                        backgroundColor: "#eee",
+                        borderRadius: 10,
+                        marginTop: 15,
+                        marginBottom: 20,
+                      }}
+                    />
+                    <span
+                      style={{
+                        fontSize: 19,
+                        fontWeight: "bold",
+
+                        lineHeight: 1.1,
+                        color: "#444",
+                      }}
+                    >
+                      Description de votre besoin
+                    </span>
+                    <textarea
+                      placeholder="Décrivez votre besoin ici"
+                      value={desc}
+                      onChange={(e) => {
+                        e.preventDefault();
+                        setDesc(e.target.value);
+                      }}
+                      style={{
+                        minHeight: 300,
+                        padding: 20,
+                        width: "100%",
+                        backgroundColor: "#eee",
+                        borderRadius: 10,
+                        marginTop: 15,
+                      }}
+                    />
+                  </div>
+                )}
+                {page == 3 && (
+                  <div
+                    style={{
+                      display: "flex",
+                      flexDirection: "column",
+                      justifyContent: "center",
+                      alignItems: "center",
+                      marginTop: 20,
+                      minHeight: 250,
+                    }}
+                  >
+                    {" "}
+                    <div
+                      style={{
+                        fontSize: 16,
+                        color: "blue",
+
+                        marginBottom: 5,
+                      }}
+                    >{`Total`}</div>
+                    <span
+                      style={{
+                        fontSize: 45,
+                        fontWeight: "bold",
+
+                        lineHeight: 1.1,
+                        color: "green",
+                      }}
+                    >
+                      {`${total}€`}
+                    </span>
+                  </div>
+                )}
+              </>
             )}
             <div
               className="gap-x-2"
@@ -1288,6 +1333,11 @@ const FullModal = () => {
             >
               <div
                 onClick={() => {
+                  if (succeded) {
+                    setIsShown(false);
+                    setPage(1);
+                    return;
+                  }
                   if (page == 1 && selectedItems.length == 0) {
                     alert("Veuillez sélectionner au moins un produit");
                     return;
@@ -1323,7 +1373,11 @@ const FullModal = () => {
                     color: "green",
                   }}
                 >
-                  {percentage == 100 ? "Envoyer" : "Suivant"}
+                  {succeded
+                    ? "Fermer"
+                    : percentage == 100
+                    ? "Envoyer"
+                    : "Suivant"}
                 </span>
               </div>
             </div>

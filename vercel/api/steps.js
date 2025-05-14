@@ -28,8 +28,8 @@ export default async function handler(req, res) {
       products: data,
     });
   } else if (method === "POST") {
-    const { fieldData } = req.body;
-    console.log(fieldData);
+    const { fieldData } = JSON.parse(req.body);
+    //console.log(fieldData);
     const WEBFLOW_API_TOKEN = process.env.WEBFLOW_API_TOKEN;
 
     const depUrl = `https://api.webflow.com/v2/collections/682441c9a9f0d4094483031d/items/live`;

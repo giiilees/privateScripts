@@ -956,6 +956,10 @@ var FullModal = function FullModal() {
     _React$useState36 = _slicedToArray(_React$useState35, 2),
     desc = _React$useState36[0],
     setDesc = _React$useState36[1];
+  var _React$useState37 = React.useState(false),
+    _React$useState38 = _slicedToArray(_React$useState37, 2),
+    succeded = _React$useState38[0],
+    setSucceded = _React$useState38[1];
   var total = selectedItems.reduce(function (acc, item) {
     var _item$fieldData;
     return acc + (((_item$fieldData = item.fieldData) === null || _item$fieldData === void 0 ? void 0 : _item$fieldData.price) || 0);
@@ -1004,7 +1008,7 @@ var FullModal = function FullModal() {
       return _regeneratorRuntime().wrap(function _callee3$(_context3) {
         while (1) switch (_context3.prev = _context3.next) {
           case 0:
-            dev = true;
+            dev = false;
             _context3.next = 3;
             return fetchWithErrorHandling("".concat(dev ? "http://localhost:3000" : "https://private-scripts.vercel.app", "/api/steps?prod=682425789f332fb83fff545c"));
           case 3:
@@ -1032,10 +1036,7 @@ var FullModal = function FullModal() {
             _context4.next = 4;
             return fetch("".concat(dev ? "http://localhost:3000" : "https://private-scripts.vercel.app", "/api/steps"), {
               method: "POST",
-              headers: {
-                "Content-Type": "application/json"
-              },
-              body: {
+              body: JSON.stringify({
                 fieldData: {
                   name: name,
                   description: desc,
@@ -1044,12 +1045,12 @@ var FullModal = function FullModal() {
                     return item.id;
                   })
                 }
-              }
+              })
             });
           case 4:
             data = _context4.sent;
             if (data.ok) {
-              _context4.next = 10;
+              _context4.next = 11;
               break;
             }
             _context4.next = 8;
@@ -1058,9 +1059,10 @@ var FullModal = function FullModal() {
             errorBody = _context4.sent;
             // Or response.json() if JSON expected
             console.log(errorBody);
-          case 10:
-            console.log("data", data);
+            return _context4.abrupt("return");
           case 11:
+            setSucceded(true);
+          case 12:
           case "end":
             return _context4.stop();
         }
@@ -1099,6 +1101,11 @@ var FullModal = function FullModal() {
     }
   }, /*#__PURE__*/React.createElement("div", {
     onClick: function onClick() {
+      if (succeded) {
+        setIsShown(false);
+        setPage(1);
+        return;
+      }
       if (page > 1) {
         setPage(function (prev) {
           return prev - 1;
@@ -1115,7 +1122,32 @@ var FullModal = function FullModal() {
       marginBottom: 25,
       cursor: "pointer"
     }
-  }, "Retour"), /*#__PURE__*/React.createElement("span", {
+  }, "Retour"), succeded && /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      justifyContent: "center",
+      alignItems: "center",
+      flexDirection: "column",
+      minHeight: 250
+    }
+  }, /*#__PURE__*/React.createElement("img", {
+    src: "https://cdn.prod.website-files.com/6814fb6db4d4a1fdce33564d/68245b3f9458e9f9ae392faf_check-square-svgrepo-com%20(1).png",
+    style: {
+      objectFit: "contain",
+      //backgroundColor: "#f5f5f5",
+      width: 120,
+      height: 120
+    }
+  }), /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontSize: 35,
+      fontWeight: "bold",
+      // maxWidth: "50%",
+      lineHeight: 1.1,
+      color: "green",
+      marginTop: 10
+    }
+  }, "Commande envoyée")), !succeded && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("span", {
     style: {
       fontSize: 35,
       fontWeight: "bold",
@@ -1272,7 +1304,7 @@ var FullModal = function FullModal() {
       lineHeight: 1.1,
       color: "green"
     }
-  }, "".concat(total, "\u20AC"))), /*#__PURE__*/React.createElement("div", {
+  }, "".concat(total, "\u20AC")))), /*#__PURE__*/React.createElement("div", {
     className: "gap-x-2",
     style: {
       display: "flex",
@@ -1280,6 +1312,11 @@ var FullModal = function FullModal() {
     }
   }, /*#__PURE__*/React.createElement("div", {
     onClick: function onClick() {
+      if (succeded) {
+        setIsShown(false);
+        setPage(1);
+        return;
+      }
       if (page == 1 && selectedItems.length == 0) {
         alert("Veuillez sélectionner au moins un produit");
         return;
@@ -1310,7 +1347,7 @@ var FullModal = function FullModal() {
       lineHeight: 1.1,
       color: "green"
     }
-  }, percentage == 100 ? "Envoyer" : "Suivant"))))));
+  }, succeded ? "Fermer" : percentage == 100 ? "Envoyer" : "Suivant"))))));
 };
 var ProgressBar = function ProgressBar(_ref5) {
   var value = _ref5.value,
