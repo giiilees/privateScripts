@@ -8,9 +8,27 @@ const App = () => {
   const [filteredData, setFilteredData] = React.useState(false);
   const [selectedFeature, setSelectedFeature] = React.useState(false);
 
+  const [initialPosition, setInitialPosition] = React.useState(false);
+
+  const [markers, setMarkers] = React.useState([]);
+
   const [selectedFromMap, setSelectedFromMap] = React.useState(false);
 
   const [selectedDep, setSelectedDep] = React.useState(false);
+  const [selectedCom, setSelectedCom] = React.useState(false);
+  const [activeFilter, setActiveFilter] = React.useState("province");
+
+  const regions = {
+    idf: ["75", "77", "78", "91", "92", "93", "94", "95"],
+    province: "all",
+  };
+
+  const defaultStyle = {
+    fillColor: "#00990022",
+    fillOpacity: 0.5,
+    strokeColor: "#00990077",
+    strokeWeight: 2,
+  };
 
   const [height, setHeight] = React.useState(290);
 
@@ -26,7 +44,20 @@ const App = () => {
     }
     return response.json(); // Or .text(), etc.
   }
+  const getData = async () => {
+    let dev = false;
+    const data = await fetchWithErrorHandling(
+      `${
+        dev ? "http://localhost:3000" : "https://private-scripts.vercel.app"
+      }/api/webflow?dep=68169726cda64534a0375de5&com=681698f19dfd03f712563c2e`
+    );
 
+    setDepList(data.dep);
+    setComList({
+      data: data.com,
+      dataByDep: data.comByDep,
+    });
+  };
   const normalize = (str) =>
     str
       .normalize("NFD")
@@ -60,21 +91,101 @@ const App = () => {
     return bounds.getCenter();
   }
 
+  class CustomMarker extends google.maps.OverlayView {
+    constructor(position, label) {
+      super();
+      this.position = position;
+      this.label = label;
+    }
+
+    onAdd() {
+      // Create the custom marker div element
+      this.div = document.createElement("div");
+      this.div.className = "custom-marker";
+      this.div.innerHTML = `<div>${this.label}</div>`; // You can replace this with any HTML (e.g., an icon or label)
+
+      // Append the custom marker to the overlay pane
+      this.getPanes().overlayMouseTarget.appendChild(this.div);
+    }
+
+    draw() {
+      const projection = this.getProjection();
+      const point = projection.fromLatLngToDivPixel(
+        new google.maps.LatLng(this.position)
+      );
+
+      // Position the custom marker using the projection's coordinates
+      if (this.div) {
+        this.div.style.position = "absolute";
+        this.div.style.left = point.x - this.div.offsetWidth / 2 + "px"; // Center horizontally
+        this.div.style.top = point.y - this.div.offsetHeight + "px"; // Center vertically
+      }
+    }
+
+    onRemove() {
+      // Remove the custom marker element from the DOM when it's removed from the map
+      if (this.div) {
+        this.div.remove();
+      }
+    }
+  }
+
   function panWithOffset(map, latLng, offsetX, offsetY) {
     const scale = Math.pow(2, map.getZoom());
     const worldCoordinateCenter = map.getProjection().fromLatLngToPoint(latLng);
     const pixelOffset = new google.maps.Point(offsetX / scale, offsetY / scale);
 
     const worldCoordinateNewCenter = new google.maps.Point(
-      worldCoordinateCenter.x - pixelOffset.x,
-      worldCoordinateCenter.y + pixelOffset.y
+      worldCoordinateCenter?.x - pixelOffset?.x,
+      worldCoordinateCenter?.y + pixelOffset?.y
     );
 
     const newCenter = map
       .getProjection()
-      .fromPointToLatLng(worldCoordinateNewCenter);
+      ?.fromPointToLatLng(worldCoordinateNewCenter);
     map.panTo(newCenter);
+    return newCenter;
   }
+
+  function getStyle(feature) {
+    const deptCode = feature.getProperty("code");
+    const regionMatch = isInActiveRegion(deptCode);
+
+    if (!regionMatch) {
+      return {
+        fillColor: "green",
+        fillOpacity: 0,
+        strokeColor: "#353E4600",
+        strokeWeight: 0,
+        zIndex: 1,
+      };
+    }
+
+    return Object.assign({}, defaultStyle);
+  }
+
+  function isInActiveRegion(code) {
+    switch (activeFilter) {
+      case "idf":
+        return regions.idf.includes(code);
+      case "province":
+        return !regions.idf.includes(code);
+      default:
+        return true;
+    }
+  }
+
+  function getIdfBounds(map) {
+    const bounds = new google.maps.LatLngBounds();
+    map.data.forEach((feature) => {
+      const code = feature.getProperty("code");
+      if (regions.idf.includes(code)) {
+        feature.getGeometry().forEachLatLng((latLng) => bounds.extend(latLng));
+      }
+    });
+    return bounds;
+  }
+
   // This function initializes the Google Map
   function initMap() {
     const bounds = new window.google.maps.LatLngBounds(
@@ -82,6 +193,7 @@ const App = () => {
       { lat: 51.124, lng: 5.561 } // Northeast corner (NE)
     );
     const position = bounds.getCenter();
+    setInitialPosition(position);
 
     const map = new google.maps.Map(document.getElementById("mapdiv"), {
       center: position,
@@ -102,6 +214,7 @@ const App = () => {
         // Add a custom property to store the department code
         features.forEach((feature) => {
           feature.setProperty("code", feature.getProperty("code"));
+          map.data.setStyle((feature) => getStyle(feature));
         });
       }
     );
@@ -131,45 +244,6 @@ const App = () => {
     });
 
     mapRef.current = map;
-
-    class CustomMarker extends google.maps.OverlayView {
-      constructor(position, label) {
-        super();
-        this.position = position;
-        this.label = label;
-      }
-
-      onAdd() {
-        // Create the custom marker div element
-        this.div = document.createElement("div");
-        this.div.className = "custom-marker";
-        this.div.innerHTML = `<div>${this.label}</div>`; // You can replace this with any HTML (e.g., an icon or label)
-
-        // Append the custom marker to the overlay pane
-        this.getPanes().overlayMouseTarget.appendChild(this.div);
-      }
-
-      draw() {
-        const projection = this.getProjection();
-        const point = projection.fromLatLngToDivPixel(
-          new google.maps.LatLng(this.position)
-        );
-
-        // Position the custom marker using the projection's coordinates
-        if (this.div) {
-          this.div.style.position = "absolute";
-          this.div.style.left = point.x - this.div.offsetWidth / 2 + "px"; // Center horizontally
-          this.div.style.top = point.y - this.div.offsetHeight + "px"; // Center vertically
-        }
-      }
-
-      onRemove() {
-        // Remove the custom marker element from the DOM when it's removed from the map
-        if (this.div) {
-          this.div.remove();
-        }
-      }
-    }
 
     // const marker = new CustomMarker(position, "Paris");
     // marker.setMap(map);
@@ -221,7 +295,16 @@ const App = () => {
     if (!input) {
       setHeight(290);
       setFilteredData(false);
+      setTimeout(() => {
+        mapRef.current.setZoom(6);
 
+        //console.log(mapRef.current);
+        panWithOffset(mapRef.current, initialPosition, 60, 0);
+      }, 250);
+      for (const m of markers) {
+        m.setMap(null);
+      }
+      setMarkers([]);
       return;
     }
 
@@ -236,21 +319,6 @@ const App = () => {
     setFilteredData(filtered);
   };
 
-  const getData = async () => {
-    let dev = false;
-    const data = await fetchWithErrorHandling(
-      `${
-        dev ? "http://localhost:3000" : "https://private-scripts.vercel.app"
-      }/api/webflow?dep=68169726cda64534a0375de5&com=681698f19dfd03f712563c2e`
-    );
-
-    setDepList(data.dep);
-    setComList({
-      data: data.com,
-      dataByDep: data.comByDep,
-    });
-  };
-
   React.useEffect(() => {
     if (window.google && window?.google?.maps) {
       //console.log("Start");
@@ -258,7 +326,7 @@ const App = () => {
     } else {
       setTimeout(() => {
         initMap();
-      }, 1000);
+      }, 1200);
     }
   }, []);
 
@@ -267,6 +335,11 @@ const App = () => {
   }, []);
 
   React.useEffect(() => {
+    if (selectedCom) {
+      setHeight(1000);
+      return;
+    }
+
     if (selectedDep) {
       const newHeight = comList?.dataByDep[selectedDep?.id]?.length
         ? comList?.dataByDep[selectedDep?.id]?.length * 80 + 250
@@ -277,7 +350,7 @@ const App = () => {
     }
     const newHeight = filteredData.length * 65 + 230;
     setHeight(newHeight);
-  }, [filteredData, selectedDep]);
+  }, [filteredData, selectedDep, selectedCom]);
 
   React.useEffect(() => {
     if (!mapRef?.current) return;
@@ -325,6 +398,22 @@ const App = () => {
       if (!result) return;
       //console.log(result);
       setSelectedDep(result);
+      for (
+        let index = 0;
+        index < comList?.dataByDep[result.id]?.length;
+        index++
+      ) {
+        const element = comList?.dataByDep[result.id][index];
+        const marker = new CustomMarker(
+          {
+            lat: element.fieldData.latitude,
+            lng: element.fieldData.longitude,
+          },
+          element.fieldData.name
+        );
+        marker.setMap(mapRef.current);
+        setMarkers((prev) => [...prev, marker]);
+      }
     });
     // console.log(event);
 
@@ -335,12 +424,49 @@ const App = () => {
       google.maps.event.removeListener(event1);
       google.maps.event.removeListener(event2);
     };
-  }, [mapRef, depList, selectedDep]);
+  }, [mapRef, comList, depList, selectedDep]);
+
+  React.useEffect(() => {
+    if (
+      !initialPosition ||
+      !mapRef ||
+      !mapRef?.current ||
+      !google ||
+      !google?.maps
+    )
+      return;
+    mapRef.current.data.setStyle((feature) => getStyle(feature));
+    if (activeFilter == "idf") {
+      const idfBounds = getIdfBounds(mapRef.current);
+      if (!idfBounds.isEmpty()) {
+        // map.fitBounds(idfBounds.pad(0.1), { maxZoom: 9 });
+        mapRef.current.setZoom(9);
+        //console.log(idfBounds.getCenter());
+        panWithOffset(mapRef.current, idfBounds.getCenter(), 300, 0);
+
+        //fitBoundsWithOffset(idfBounds.pad(0.1), { maxZoom: 9 });
+      }
+    } else {
+      // const franceBounds = new google.maps.LatLngBounds(
+      //   new google.maps.LatLng(41.303, -13.142),
+      //   new google.maps.LatLng(51.124, 5.561)
+      // );
+      // if (!franceBounds.isEmpty()) {
+
+      // }
+      setTimeout(() => {
+        mapRef.current.setZoom(6);
+
+        //console.log(mapRef.current);
+        panWithOffset(mapRef.current, initialPosition, 60, 0);
+      }, 250);
+    }
+  }, [mapRef, google, google.maps, activeFilter, initialPosition]);
 
   return (
     <div style={{ display: "flex", justifyContent: "center" }}>
       <div
-        className="xl:max-w-[100%] w-[100%] xl:min-h-[90vh]"
+        className="xl:max-w-[90%] w-[100%] xl:min-h-[90vh]"
         style={{
           flexShrink: 0,
           flexGrow: 1,
@@ -408,7 +534,74 @@ const App = () => {
             //   setHeight("auto");
             // }}
           >
-            {!selectedDep && (
+            {selectedCom && (
+              <>
+                <div
+                  onClick={() => {
+                    setSelectedCom(false);
+                    for (const m of markers) {
+                      m.setMap(null);
+                    }
+                    setMarkers([]);
+                    mapRef.current.setZoom(9);
+                    //  panWithOffset(mapRef.current, )
+                  }}
+                  style={{
+                    fontSize: 19,
+                    color: "blue",
+                    textDecoration: "underline",
+                    marginBottom: 5,
+                    cursor: "pointer",
+                  }}
+                >{`Retour`}</div>
+                <div
+                  style={{
+                    flex: 1,
+                    display: "flex",
+                    // backgroundColor: "red",
+                    justifyContent: "center",
+                    alignItems: "center",
+                    flexDirection: "column",
+                    paddingBottom: 50,
+                  }}
+                >
+                  <img
+                    src={selectedCom.fieldData.profile.url}
+                    style={{
+                      width: 150,
+                      height: 150,
+                      borderRadius: "50%",
+                      objectFit: "cover",
+                      marginBottom: 15,
+                    }}
+                  />
+                  <span
+                    style={{
+                      fontSize: 30,
+                      fontWeight: "bold",
+
+                      lineHeight: 1.1,
+                      color: "green",
+                    }}
+                  >
+                    {selectedCom.fieldData.name}
+                  </span>
+                  <span
+                    style={{
+                      fontSize: 19,
+                      fontWeight: "normal",
+
+                      lineHeight: 1.1,
+                      color: "#444",
+                      marginTop: 10,
+                    }}
+                  >
+                    {selectedCom.fieldData.email}
+                  </span>
+                </div>
+              </>
+            )}
+            {!selectedDep && !selectedCom && (
               <>
                 <span
                   style={{
@@ -475,14 +668,98 @@ const App = () => {
                 </div>
                 {!filteredData && (
                   <div
+                    className=" gap-x-2 "
                     style={{
                       height: 60,
                       flexGrow: 1,
                       flexShrink: 0,
-                      backgroundColor: "red",
+                      // backgroundColor: "red",
+                      display: "flex",
                       marginTop: 20,
                     }}
-                  ></div>
+                  >
+                    <div
+                      onClick={() => {
+                        setActiveFilter("idf");
+                      }}
+                      style={{
+                        flex: 1,
+                        cursor: "pointer",
+                        backgroundColor:
+                          activeFilter == "idf" ? "green" : "#fff",
+                        height: 60,
+                        border: "1px solid green",
+                        justifyContent: "center",
+                        display: "flex",
+
+                        alignItems: "center",
+                      }}
+                    >
+                      <span
+                        style={{
+                          fontSize: 17,
+                          fontWeight: "bold",
+
+                          lineHeight: 1.1,
+                          color: activeFilter == "idf" ? "#fff" : "green",
+                        }}
+                      >
+                        Île-de-France
+                      </span>
+                    </div>
+                    <div
+                      onClick={() => {
+                        setActiveFilter("province");
+                      }}
+                      style={{
+                        flex: 1,
+                        height: 60,
+                        cursor: "pointer",
+
+                        border: "1px solid green",
+                        justifyContent: "center",
+                        display: "flex",
+                        backgroundColor:
+                          activeFilter == "province" ? "green" : "#fff",
+                        alignItems: "center",
+                      }}
+                    >
+                      <span
+                        style={{
+                          fontSize: 17,
+                          fontWeight: "bold",
+
+                          lineHeight: 1.1,
+                          color: activeFilter == "province" ? "#fff" : "green",
+                        }}
+                      >
+                        Province
+                      </span>
+                    </div>
+                    <div
+                      style={{
+                        flex: 1,
+                        cursor: "pointer",
+                        display: "flex",
+                        height: 60,
+                        border: "1px solid green",
+                        justifyContent: "center",
+                        alignItems: "center",
+                      }}
+                    >
+                      <span
+                        style={{
+                          fontSize: 17,
+                          fontWeight: "bold",
+
+                          lineHeight: 1.1,
+                          color: "green",
+                        }}
+                      >
+                        BeNeLux
+                      </span>
+                    </div>
+                  </div>
                 )}
                 {filteredData && filteredData[0] && (
                   <div
@@ -508,6 +785,25 @@ const App = () => {
                             );
                             //console.log(item);
                             setSelectedDep(item);
+                            //console.log(comList?.dataByDep[item.id]);
+
+                            for (
+                              let index = 0;
+                              index < comList?.dataByDep[item.id]?.length;
+                              index++
+                            ) {
+                              const element =
+                                comList?.dataByDep[item.id][index];
+                              const marker = new CustomMarker(
+                                {
+                                  lat: element.fieldData.latitude,
+                                  lng: element.fieldData.longitude,
+                                },
+                                element.fieldData.name
+                              );
+                              marker.setMap(mapRef.current);
+                              setMarkers((prev) => [...prev, marker]);
+                            }
                             //setKeyword("");
                             //setFilteredData(false);
                             //console.log(item.fieldData.code);
@@ -542,7 +838,7 @@ const App = () => {
                 )}
               </>
             )}
-            {selectedDep && (
+            {selectedDep && !selectedCom && (
               <>
                 <div
                   onClick={() => {
@@ -589,16 +885,30 @@ const App = () => {
                       key={index}
                       className="hover:bg-gray-100 bg-[#f5f5f5"
                       onClick={() => {
-                        // zoomToDepartement(
-                        //   item.fieldData[`code-2`],
-                        //   mapRef.current,
-                        //   item.fieldData[`name`]
-                        // );
-                        // //console.log(item);
-                        // setSelectedDep(item);
-                        //setKeyword("");
-                        //setFilteredData(false);
-                        //console.log(item.fieldData.code);
+                        setSelectedCom(item);
+                        panWithOffset(
+                          mapRef.current,
+                          {
+                            lat: item.fieldData.latitude,
+                            lng: item.fieldData.longitude,
+                          },
+                          50,
+                          0
+                        );
+                        for (const m of markers) {
+                          m.setMap(null);
+                        }
+                        setMarkers([]);
+                        const marker = new CustomMarker(
+                          {
+                            lat: item.fieldData.latitude,
+                            lng: item.fieldData.longitude,
+                          },
+                          item.fieldData.name
+                        );
+                        marker.setMap(mapRef.current);
+                        setMarkers((prev) => [...prev, marker]);
+                        mapRef.current.setZoom(12);
                       }}
                       style={{
                         display: "flex",
@@ -640,7 +950,7 @@ const App = () => {
             justifyContent: "center",
             alignItems: "center",
             // border: "1px solid green",
-            borderRadius: 0,
+            borderRadius: 10,
           }}
         ></div>
       </div>
@@ -648,16 +958,409 @@ const App = () => {
   );
 };
 
-const Spinner = () => {
+const FullModal = () => {
+  // This is a React component that initializes a Google Map and displays it in a div with the ID "mapdiv".
+  let pages = 3;
+  let steps = parseInt(100 / pages);
+  const [page, setPage] = React.useState(1);
+  let percentage = steps * page < 98 ? steps * page : 100;
+  const [isShown, setIsShown] = React.useState(true);
+  const [data, setData] = React.useState(false);
+  const [selectedItems, setSelectedItems] = React.useState([]);
+  const [name, setName] = React.useState("");
+  const [desc, setDesc] = React.useState("");
+
+  let total = selectedItems.reduce((acc, item) => {
+    return acc + (item.fieldData?.price || 0);
+  }, 0);
+
+  async function fetchWithErrorHandling(url, options = {}) {
+    const response = await fetch(url, options);
+    if (!response.ok) {
+      const errorBody = await response.text(); // Or response.json() if JSON expected
+      console.log(errorBody);
+      throw new Error(`HTTP ${response.status}: ${errorBody}`);
+    }
+    return response.json(); // Or .text(), etc.
+  }
+  const getData = async () => {
+    let dev = true;
+    const data = await fetchWithErrorHandling(
+      `${
+        dev ? "http://localhost:3000" : "https://private-scripts.vercel.app"
+      }/api/steps?prod=682425789f332fb83fff545c`
+    );
+
+    setData(data.products);
+    console.log(data.products);
+  };
+
+  const submitData = async () => {
+    console.log("starting");
+    let dev = true;
+    const data = await fetch(
+      `${
+        dev ? "http://localhost:3000" : "https://private-scripts.vercel.app"
+      }/api/steps`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: {
+          fieldData: {
+            name: name,
+            description: desc,
+            total,
+            "products-2": selectedItems.map((item) => item.id),
+          },
+        },
+      }
+    );
+    if (!data.ok) {
+      const errorBody = await response.text(); // Or response.json() if JSON expected
+      console.log(errorBody);
+    }
+    console.log("data", data);
+  };
+
+  React.useEffect(() => {
+    document.getElementById("mainbtn").addEventListener("click", function () {
+      // Your code here
+      setIsShown(true);
+    });
+  }, []);
+
+  React.useEffect(() => {
+    getData();
+  }, []);
+
+  return (
+    <>
+      {isShown && (
+        <div
+          style={{
+            display: "flex",
+            position: "fixed",
+            top: 0,
+            left: 0,
+            width: "100vw",
+            height: "100vh",
+            justifyContent: "center",
+            alignItems: "center",
+            backgroundColor: "#000000aa",
+            zIndex: 999999999999999,
+          }}
+        >
+          <div
+            className="xl:w-[45vw] w-[100%] xl:h-[auto] xl:min-h-[100px] min-h-[100vh] bg-white rounded-[15px] "
+            style={{
+              padding: 40,
+            }}
+          >
+            <div
+              onClick={() => {
+                if (page > 1) {
+                  setPage((prev) => {
+                    return prev - 1;
+                  });
+                  return;
+                }
+                setIsShown(false);
+                setPage(1);
+              }}
+              style={{
+                fontSize: 16,
+                color: "blue",
+                textDecoration: "underline",
+                marginBottom: 25,
+                cursor: "pointer",
+              }}
+            >{`Retour`}</div>
+            <span
+              style={{
+                fontSize: 35,
+                fontWeight: "bold",
+                maxWidth: "50%",
+                lineHeight: 1.1,
+                color: "green",
+              }}
+            >
+              {"Votre besoin"}
+            </span>
+            <ProgressBar value={percentage} />
+            {page == 1 && (
+              <div
+                className="gap-x-2 "
+                style={{
+                  display: "flex",
+                  maxWidth: "100%",
+                  justifyContent: "center",
+                  alignItems: "center",
+                  paddingTop: 20,
+                }}
+              >
+                {!data && (
+                  <div
+                    style={{
+                      display: "flex",
+                      justifyContent: "center",
+                      alignItems: "center",
+                      flexDirection: "column",
+                      minHeight: 220,
+                    }}
+                  >
+                    <Spinner large />
+                  </div>
+                )}
+                {data &&
+                  data.items?.length &&
+                  data.items.map((item, index) => (
+                    <div
+                      key={index}
+                      style={{
+                        borderWidth: 0,
+                        borderColor: "green",
+                        borderRadius: 20,
+                        overflow: "hidden",
+                        position: "relative",
+                        display: "flex",
+                        alignItems: "flex-end",
+                        justifyContent: "center",
+                        cursor: "pointer",
+                      }}
+                    >
+                      <img
+                        onClick={() => {
+                          setSelectedItems((prev) => {
+                            if (prev.includes(item)) {
+                              return prev.filter((i) => i != item);
+                            }
+                            return [...prev, item];
+                          });
+                        }}
+                        src={item?.fieldData?.image?.url}
+                        width={"100%"}
+                        style={{
+                          objectFit: "cover",
+                          flex: 1,
+
+                          backgroundColor: "#f5f5f5",
+                        }}
+                      />
+                      {selectedItems.includes(item) && (
+                        <div
+                          style={{
+                            position: "absolute",
+                            left: 0,
+                            width: "100%",
+                            display: "flex",
+                            justifyContent: "center",
+                            alignItems: "center",
+                            height: 40,
+                            backgroundColor: "green",
+                          }}
+                        >
+                          <span
+                            style={{
+                              fontSize: 15,
+                              fontWeight: "normal",
+
+                              lineHeight: 1.1,
+                              color: "#fff",
+                            }}
+                          >
+                            {"Sélectionné"}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+              </div>
+            )}
+            {page == 2 && (
+              <div
+                style={{
+                  display: "flex",
+                  flexDirection: "column",
+                  justifyContent: "center",
+                  alignItems: "flex-start",
+                  marginTop: 20,
+                }}
+              >
+                <span
+                  style={{
+                    fontSize: 19,
+                    fontWeight: "bold",
+
+                    lineHeight: 1.1,
+                    color: "#444",
+                  }}
+                >
+                  Nom Complet *
+                </span>
+                <input
+                  type="text"
+                  placeholder="Nom Complet"
+                  value={name}
+                  onChange={(e) => {
+                    e.preventDefault();
+                    setName(e.target.value);
+                  }}
+                  style={{
+                    minHeight: 60,
+                    padding: 20,
+                    width: "100%",
+                    backgroundColor: "#eee",
+                    borderRadius: 10,
+                    marginTop: 15,
+                    marginBottom: 20,
+                  }}
+                />
+                <span
+                  style={{
+                    fontSize: 19,
+                    fontWeight: "bold",
+
+                    lineHeight: 1.1,
+                    color: "#444",
+                  }}
+                >
+                  Description de votre besoin
+                </span>
+                <textarea
+                  placeholder="Décrivez votre besoin ici"
+                  value={desc}
+                  onChange={(e) => {
+                    e.preventDefault();
+                    setDesc(e.target.value);
+                  }}
+                  style={{
+                    minHeight: 300,
+                    padding: 20,
+                    width: "100%",
+                    backgroundColor: "#eee",
+                    borderRadius: 10,
+                    marginTop: 15,
+                  }}
+                />
+              </div>
+            )}
+            {page == 3 && (
+              <div
+                style={{
+                  display: "flex",
+                  flexDirection: "column",
+                  justifyContent: "center",
+                  alignItems: "center",
+                  marginTop: 20,
+                  minHeight: 250,
+                }}
+              >
+                {" "}
+                <div
+                  style={{
+                    fontSize: 16,
+                    color: "blue",
+
+                    marginBottom: 5,
+                  }}
+                >{`Total`}</div>
+                <span
+                  style={{
+                    fontSize: 45,
+                    fontWeight: "bold",
+
+                    lineHeight: 1.1,
+                    color: "green",
+                  }}
+                >
+                  {`${total}€`}
+                </span>
+              </div>
+            )}
+            <div
+              className="gap-x-2"
+              style={{
+                display: "flex",
+                flexDirection: "row",
+              }}
+            >
+              <div
+                onClick={() => {
+                  if (page == 1 && selectedItems.length == 0) {
+                    alert("Veuillez sélectionner au moins un produit");
+                    return;
+                  }
+                  if (percentage == 100) {
+                    submitData();
+                    return;
+                  }
+                  setPage((prev) => {
+                    return prev + 1;
+                  });
+                }}
+                className="hover:bg-green-200 "
+                style={{
+                  flex: 1,
+                  height: 60,
+                  cursor: "pointer",
+
+                  border: "1px solid green",
+                  justifyContent: "center",
+                  display: "flex",
+
+                  alignItems: "center",
+                  marginTop: 20,
+                }}
+              >
+                <span
+                  style={{
+                    fontSize: 17,
+                    fontWeight: "bold",
+
+                    lineHeight: 1.1,
+                    color: "green",
+                  }}
+                >
+                  {percentage == 100 ? "Envoyer" : "Suivant"}
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
+  );
+};
+
+const ProgressBar = ({ value, max = 100 }) => {
+  const percentage = Math.min(Math.max((value / max) * 100, 0), 100);
+
+  return (
+    <div className="w-full bg-gray-200 rounded-full h-6 relative mt-[15px]">
+      <div
+        className="bg-green-600 h-full rounded-full transition-all duration-300 ease-in-out"
+        style={{ width: `${percentage}%` }}
+      ></div>
+      <span className="absolute inset-0 flex items-center justify-center text-sm font-semibold text-black">
+        {Math.round(percentage)}%
+      </span>
+    </div>
+  );
+};
+
+const Spinner = ({ large }) => {
   return (
     <div
       style={{
         display: "flex",
-        width: 25,
-        position: "absolute",
-        right: 20,
-        height: 25,
-        flexGrow: 1,
+        width: large ? 45 : 25,
+        height: large ? 45 : 25,
+        position: large ? "relative" : "absolute",
+        [large ? null : "right"]: 20,
+
+        flexGrow: large ? 0 : 1,
         flexShrink: 0,
       }}
       className="spinner"
@@ -717,3 +1420,7 @@ let styles = [
 ];
 // This assumes you're using ReactDOM
 ReactDOM.render(<App />, document.getElementById("divmain"));
+document.getElementById("mainbtn").addEventListener("click", function () {
+  // Your code here
+  ReactDOM.render(<FullModal />, document.getElementById("fullmodaldiv"));
+});

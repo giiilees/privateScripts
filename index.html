@@ -15,17 +15,21 @@
         margin-block: 0px;
       }
       .custom-marker {
-        width: 70px;
+        /* width: 100px; */
         height: 40px;
-        background-color: red;
-        color: white;
+        background-color: #fff;
+        color: #222;
+        padding-left: 15px;
+        cursor: pointer;
+        padding-right: 15px;
+        border: 1px solid green;
         font-weight: bold;
         border-radius: 10px;
         display: flex;
         align-items: center;
         justify-content: center;
         font-size: 16px;
-        border: 2px solid #fff;
+        z-index: 999999999999;
         box-shadow: 0 0 5px rgba(0, 0, 0, 0.2);
       }
 
@@ -46,6 +50,8 @@
   </head>
   <body>
     <div id="divmain"></div>
+    <div id="fullmodaldiv"></div>
+    <button id="mainbtn">Click</button>
     <script src="https://unpkg.com/react@17/umd/react.development.js"></script>
     <script src="https://unpkg.com/react-dom@17/umd/react-dom.development.js"></script>
     <script
